@@ -1,0 +1,8 @@
+name: SettingsGUI
+version: 1
+main: me.illusion.configgui.ConfigurationPlugin
+
+commands:
+  settings:
+    usage: /<command>
+    description: Opens GUI
