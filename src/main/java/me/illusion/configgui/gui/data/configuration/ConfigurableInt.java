@@ -30,6 +30,7 @@ public class ConfigurableInt implements Configurable {
 
     public ConfigurableInt(int val, String path, File file, FileConfiguration config, int slot, Menu menu, Menu previous)
     {
+        System.out.println("new ConfigurableInt");
         this.menu = menu;
         this.previousMenu = previous;
         this.val = val;

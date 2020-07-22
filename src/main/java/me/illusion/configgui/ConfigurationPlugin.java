@@ -16,13 +16,9 @@ public class ConfigurationPlugin extends JavaPlugin {
     public void onEnable() {
         Bukkit.getPluginManager().registerEvents(new MenuListener(), this);
         getCommand("settings").setExecutor(new SettingsCommand(this));
-        getLogger().info("Enabled, attempting to load settings soon...");
-    }
-
-    @Override
-    public void onLoad() {
         getLogger().info("Loading settings...");
         mainGUI = new MainGUI(this);
         getLogger().info("Settings loaded.");
     }
+
 }

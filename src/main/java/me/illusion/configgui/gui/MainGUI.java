@@ -14,6 +14,7 @@ import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -21,6 +22,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import java.io.File;
 import java.lang.reflect.InvocationTargetException;
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class MainGUI {
@@ -75,6 +77,7 @@ public class MainGUI {
                 .collect(Collectors.toList());
 
         mainMenu = new Menu(((menus.size() / 9) + 1) * 9, centerTitle("Select your plugin"), "main-gui");
+        slot = 0;
 
         sorted.forEach(entry -> {
             String name = entry.getKey();
@@ -87,15 +90,26 @@ public class MainGUI {
             });
         });
 
+        slot = 0;
+
         mainMenu.build();
     }
 
     private Menu createMenu(File[] contents)
     {
-        contents = (File[]) Arrays.stream(contents).filter(file -> file.getName().endsWith(".yml")).toArray();
-
-        Menu menu = new Menu(((contents.length / 9) + 1) * 9, centerTitle("Select your plugin"), "sub-1");
         StringComparator comparator = new StringComparator();
+
+        contents = Arrays.stream(contents)
+                .filter(file -> file.getName().endsWith(".yml"))
+                .sorted((f1, f2) -> comparator.compare(f1.getName(), f2.getName()))
+                .collect(Collectors.toList()).toArray(new File[]{});
+
+        Menu menu = new Menu(((contents.length / 9) + 1) * 9, centerTitle("Select your file"), "sub-1");
+
+        Consumer<InventoryClickEvent> action = (event) -> {
+            event.setCancelled(true);
+            event.getWhoClicked().closeInventory();
+        };
 
         for(File file : contents)
         {
@@ -106,6 +120,9 @@ public class MainGUI {
 
             Map<String, Object> objects = new HashMap<>();
             createItems(cfg, objects);
+
+            if(objects.isEmpty())
+                continue;
 
             List<Map.Entry<String, Object>> list = objects.entrySet().stream()
                     .sorted((e1, e2) -> comparator.compare(e1.getKey(), e2.getKey()))
@@ -130,12 +147,19 @@ public class MainGUI {
 
             });
 
-            subMenu.setItem(subMenu.getSize() - 1, MenuItems.BACK_1, (event) -> {
-                event.setCancelled(true);
-                event.getWhoClicked().closeInventory();
-                event.getWhoClicked().openInventory(menu.getInventory());
-            });
+            slot = 0;
+
+            subMenu.setItem(subMenu.getSize() - 1, MenuItems.BACK_1,
+                    action.andThen((event) -> event.getWhoClicked().openInventory(menu.getInventory())));
+
+            menu.setItem(slot++, makeItem(file.getName()),
+                    action.andThen((event) -> event.getWhoClicked().openInventory(subMenu.getInventory())));
+
+            subMenu.build();
         }
+
+        menu.setItem(menu.getSize() - 1, MenuItems.BACK_1,
+                action.andThen((event) -> event.getWhoClicked().openInventory(mainMenu.getInventory())));
 
         return menu.build();
 
