@@ -3,6 +3,7 @@ package me.illusion.configgui.gui;
 import com.google.common.base.Strings;
 import lombok.Getter;
 import me.illusion.configgui.gui.data.MenuItems;
+import me.illusion.configgui.gui.data.configuration.Configurable;
 import me.illusion.configgui.gui.data.configuration.ConfigurableInt;
 import me.illusion.configgui.gui.menu.Menu;
 import me.illusion.configgui.util.FileUtil;
@@ -27,45 +28,43 @@ import java.util.stream.Collectors;
 
 public class MainGUI {
 
+    private final Map<Class<?>, Class<?>> classes = new HashMap<>();
     @Getter
     private Menu mainMenu;
     private File directory;
-
     private int slot;
-
-    private final Class<?>[] classes = {
-            ConfigurableInt.class,
-    };
 
     public MainGUI(JavaPlugin plugin)
     {
         directory = plugin.getDataFolder().getParentFile();
+
+        classes.put(int.class, ConfigurableInt.class);
+
         setup();
     }
 
     private void setup()
     {
-        if(directory == null)
+        if (directory == null)
             return;
 
         File[] files = directory.listFiles();
 
-        if(files == null)
+        if (files == null)
             return;
 
         Map<String, Menu> menus = new HashMap<>();
 
-        for(File dir : files)
-        {
+        for (File dir : files) {
             String name = dir.getName();
             Plugin plugin = Bukkit.getPluginManager().getPlugin(name);
 
-            if(plugin == null)
+            if (plugin == null)
                 continue;
 
             File[] contents = dir.listFiles();
 
-            if(contents == null || contents.length == 0)
+            if (contents == null || contents.length == 0)
                 continue;
 
             menus.put(dir.getName(), createMenu(contents));
@@ -73,7 +72,7 @@ public class MainGUI {
 
         List<Map.Entry<String, Menu>> sorted = menus.entrySet()
                 .stream()
-                .sorted(Comparator.comparing(Map.Entry::getKey))
+                .sorted(Map.Entry.comparingByKey())
                 .collect(Collectors.toList());
 
         mainMenu = new Menu(((menus.size() / 9) + 1) * 9, centerTitle("Select your plugin"), "main-gui");
@@ -111,17 +110,16 @@ public class MainGUI {
             event.getWhoClicked().closeInventory();
         };
 
-        for(File file : contents)
-        {
+        for (File file : contents) {
             FileConfiguration cfg = FileUtil.configurationFromFile(file);
 
-            if(cfg == null)
+            if (cfg == null)
                 continue;
 
             Map<String, Object> objects = new HashMap<>();
             createItems(cfg, objects);
 
-            if(objects.isEmpty())
+            if (objects.isEmpty())
                 continue;
 
             List<Map.Entry<String, Object>> list = objects.entrySet().stream()
@@ -130,24 +128,30 @@ public class MainGUI {
 
             Menu subMenu = new Menu(((contents.length / 9) + 1) * 9, centerTitle(file.getName()), "sub-2");
 
+            List<Configurable> configurables = new ArrayList<>();
+
             list.forEach((entry) -> {
                 String path = entry.getKey().startsWith(".") ? entry.getKey().replaceFirst("\\.", "") : entry.getKey();
                 Object object = entry.getValue();
 
                 Class<?> clazz = PrimitiveUnboxer.unbox(object.getClass());
-                System.out.println(clazz);
-                for (Class<?> configurableClass : classes)
-                    if (configurableClass.getConstructors()[0].getParameterTypes()[0].equals(clazz)) {
-                        try {
-                            configurableClass.getConstructors()[0].newInstance(object, path, file, cfg, slot++, subMenu, menu);
-                        } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
-                            e.printStackTrace();
-                        }
-                    }
 
+                if (classes.containsKey(clazz)) {
+                    Class<?> configurableClass = classes.get(clazz);
+                    try {
+                        configurables.add((Configurable) configurableClass.getConstructors()[0].newInstance(object, path, file, cfg, slot++, subMenu, menu));
+                    } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
+                        e.printStackTrace();
+                    }
+                }
             });
 
             slot = 0;
+
+            subMenu.setItem(subMenu.getSize() - 2, MenuItems.SAVE, (event) -> {
+                event.setCancelled(true);
+                configurables.forEach(Configurable::save);
+            });
 
             subMenu.setItem(subMenu.getSize() - 1, MenuItems.BACK_1,
                     action.andThen((event) -> event.getWhoClicked().openInventory(menu.getInventory())));

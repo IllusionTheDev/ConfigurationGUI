@@ -21,8 +21,9 @@ public class StringComparator implements Comparator<String> {
                 continue;
             if(Character.toUpperCase(c) == c2)
                 return 1;
-            break;
+
+            return (int) c - (int) c2;
         }
-        return -1;
+        return 0;
     }
 }
