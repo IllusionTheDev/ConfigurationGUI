@@ -1,4 +1,4 @@
-package me.illusion.configgui.gui.data.configuration;
+package me.illusion.configgui.data.configuration;
 
 import me.illusion.configgui.gui.menu.Menu;
 

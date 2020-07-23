@@ -1,6 +1,8 @@
-package me.illusion.configgui.gui.data.configuration;
+package me.illusion.configgui.data.configuration;
 
+import com.google.common.primitives.Doubles;
 import lombok.Getter;
+import me.illusion.configgui.ConfigurationPlugin;
 import me.illusion.configgui.gui.menu.Menu;
 import me.illusion.configgui.util.ItemBuilder;
 import org.bukkit.ChatColor;
@@ -13,14 +15,14 @@ import java.io.File;
 import java.io.IOException;
 import java.util.List;
 
-public class ConfigurableInt implements Configurable {
+public class ConfigurableBoolean implements Configurable {
 
     @Getter
     private Menu menu;
     @Getter
     private Menu previousMenu;
 
-    private int val;
+    private boolean val;
 
     private String path;
     private File file;
@@ -28,9 +30,10 @@ public class ConfigurableInt implements Configurable {
 
     private ItemStack item;
 
-    public ConfigurableInt(int val, String path, File file, FileConfiguration config, int slot, Menu menu, Menu previous)
+    private int slot;
+
+    public ConfigurableBoolean(boolean val, ConfigurationPlugin main, String path, File file, FileConfiguration config, int slot, Menu menu, Menu previous)
     {
-        System.out.println("new ConfigurableInt");
         this.menu = menu;
         this.previousMenu = previous;
         this.val = val;
@@ -39,41 +42,24 @@ public class ConfigurableInt implements Configurable {
         this.config = config;
         this.file = file;
 
+        this.slot = slot;
+
+        String color = val ? "&a" : "&c";
+
         item = new ItemBuilder(Material.SKULL_ITEM)
                 .name("&a" + path)
                 .skullHash("eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZTRkNDliYWU5NWM3OTBjM2IxZmY1YjJmMDEwNTJhNzE0ZDYxODU0ODFkNWIxYzg1OTMwYjNmOTlkMjMyMTY3NCJ9fX0=")
-                .lore("", "&bLeft Click &7to increase by 1", "&cRight Click &7to decrease by 1", "", "&7Current Value: &6" + val)
+                .lore("",
+                        "&bClick &7to toggle value",
+                        "",
+                        "&7Current Value: " + color + val)
                 .build();
 
         menu.setItem(slot, item, (event) -> {
-            if (event.isLeftClick())
-                this.val = this.val + 1;
-            if (event.isRightClick())
-                this.val = this.val - 1;
-
+            this.val = !this.val;
             event.getInventory().setItem(slot, updateItem());
             event.setCancelled(true);
         });
-    }
-
-    @Override
-    public boolean setValue(Object value) {
-        if(value instanceof Integer)
-        {
-            val = (int) value;
-            return true;
-        }
-
-        if(value instanceof String)
-        {
-            String s = (String) value;
-            if(s.matches("\\d+"))
-            {
-                val = Integer.valueOf((String) value);
-                return true;
-            }
-        }
-        return false;
     }
 
     private ItemStack updateItem()
@@ -82,11 +68,27 @@ public class ConfigurableInt implements Configurable {
 
         List<String> lore = meta.getLore();
 
-        lore.set(4, ChatColor.translateAlternateColorCodes('&', "&7Current Value: &6" + val));
+        String color = val ? "&a" : "&c";
+        lore.set(3, ChatColor.translateAlternateColorCodes('&', "&7Current Value: " + color + val));
 
         meta.setLore(lore);
         item.setItemMeta(meta);
+
+        menu.getInventory().setItem(slot, item);
+
         return item;
+    }
+
+    @Override
+    public boolean setValue(Object value) {
+        if(value instanceof Boolean)
+        {
+            this.val = (boolean) value;
+            updateItem();
+            return true;
+        }
+
+        return false;
     }
 
     @Override

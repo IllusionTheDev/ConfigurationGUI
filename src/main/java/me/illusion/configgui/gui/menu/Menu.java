@@ -62,7 +62,10 @@ public class Menu implements InventoryHolder {
     {
         inv = Bukkit.createInventory(this, size, title);
 
-        contents.keySet().forEach(i -> inv.setItem(i, contents.get(i)));
+        contents.keySet().forEach(i -> {
+            Bukkit.broadcastMessage(i + " " + contents.get(i).getItemMeta().getDisplayName());
+            inv.setItem(i, contents.get(i));
+        });
 
         return this;
     }

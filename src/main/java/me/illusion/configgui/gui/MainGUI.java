@@ -2,9 +2,9 @@ package me.illusion.configgui.gui;
 
 import com.google.common.base.Strings;
 import lombok.Getter;
-import me.illusion.configgui.gui.data.MenuItems;
-import me.illusion.configgui.gui.data.configuration.Configurable;
-import me.illusion.configgui.gui.data.configuration.ConfigurableInt;
+import me.illusion.configgui.ConfigurationPlugin;
+import me.illusion.configgui.data.MenuItems;
+import me.illusion.configgui.data.configuration.*;
 import me.illusion.configgui.gui.menu.Menu;
 import me.illusion.configgui.util.FileUtil;
 import me.illusion.configgui.util.ItemBuilder;
@@ -32,13 +32,18 @@ public class MainGUI {
     @Getter
     private Menu mainMenu;
     private File directory;
-    private int slot;
 
-    public MainGUI(JavaPlugin plugin)
+    private ConfigurationPlugin main;
+
+    public MainGUI(ConfigurationPlugin plugin)
     {
+        main = plugin;
         directory = plugin.getDataFolder().getParentFile();
 
         classes.put(int.class, ConfigurableInt.class);
+        classes.put(double.class, ConfigurableDouble.class);
+        classes.put(String.class, ConfigurableString.class);
+        classes.put(boolean.class, ConfigurableBoolean.class);
 
         setup();
     }
@@ -54,6 +59,7 @@ public class MainGUI {
             return;
 
         Map<String, Menu> menus = new HashMap<>();
+        int slot = 0;
 
         for (File dir : files) {
             String name = dir.getName();
@@ -78,7 +84,7 @@ public class MainGUI {
         mainMenu = new Menu(((menus.size() / 9) + 1) * 9, centerTitle("Select your plugin"), "main-gui");
         slot = 0;
 
-        sorted.forEach(entry -> {
+        for(Map.Entry<String, Menu> entry : sorted) {
             String name = entry.getKey();
             Menu subMenu = entry.getValue();
 
@@ -87,9 +93,7 @@ public class MainGUI {
                 event.getWhoClicked().closeInventory();
                 event.getWhoClicked().openInventory(subMenu.getInventory());
             });
-        });
-
-        slot = 0;
+        }
 
         mainMenu.build();
     }
@@ -110,7 +114,10 @@ public class MainGUI {
             event.getWhoClicked().closeInventory();
         };
 
-        for (File file : contents) {
+        for(int i = 0; i < contents.length; i++)
+        {
+            File file = contents[i];
+
             FileConfiguration cfg = FileUtil.configurationFromFile(file);
 
             if (cfg == null)
@@ -118,6 +125,7 @@ public class MainGUI {
 
             Map<String, Object> objects = new HashMap<>();
             createItems(cfg, objects);
+            int slot = 0;
 
             if (objects.isEmpty())
                 continue;
@@ -126,11 +134,11 @@ public class MainGUI {
                     .sorted((e1, e2) -> comparator.compare(e1.getKey(), e2.getKey()))
                     .collect(Collectors.toList());
 
-            Menu subMenu = new Menu(((contents.length / 9) + 1) * 9, centerTitle(file.getName()), "sub-2");
+            Menu subMenu = new Menu(((list.size() / 9) + 1) * 9, centerTitle(file.getName()), "sub-2");
 
             List<Configurable> configurables = new ArrayList<>();
 
-            list.forEach((entry) -> {
+            for(Map.Entry<String, Object> entry : list) {
                 String path = entry.getKey().startsWith(".") ? entry.getKey().replaceFirst("\\.", "") : entry.getKey();
                 Object object = entry.getValue();
 
@@ -139,14 +147,12 @@ public class MainGUI {
                 if (classes.containsKey(clazz)) {
                     Class<?> configurableClass = classes.get(clazz);
                     try {
-                        configurables.add((Configurable) configurableClass.getConstructors()[0].newInstance(object, path, file, cfg, slot++, subMenu, menu));
+                        configurables.add((Configurable) configurableClass.getConstructors()[0].newInstance(object, main, path, file, cfg, slot++, subMenu, menu));
                     } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
                         e.printStackTrace();
                     }
                 }
-            });
-
-            slot = 0;
+            }
 
             subMenu.setItem(subMenu.getSize() - 2, MenuItems.SAVE, (event) -> {
                 event.setCancelled(true);
@@ -156,7 +162,7 @@ public class MainGUI {
             subMenu.setItem(subMenu.getSize() - 1, MenuItems.BACK_1,
                     action.andThen((event) -> event.getWhoClicked().openInventory(menu.getInventory())));
 
-            menu.setItem(slot++, makeItem(file.getName()),
+            menu.setItem(i, makeItem(file.getName()),
                     action.andThen((event) -> event.getWhoClicked().openInventory(subMenu.getInventory())));
 
             subMenu.build();

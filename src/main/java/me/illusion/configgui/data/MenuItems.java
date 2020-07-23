@@ -1,4 +1,4 @@
-package me.illusion.configgui.gui.data;
+package me.illusion.configgui.data;
 
 import me.illusion.configgui.util.ItemBuilder;
 import org.bukkit.Material;
